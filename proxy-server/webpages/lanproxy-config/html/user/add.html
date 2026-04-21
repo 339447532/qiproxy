@@ -1,0 +1,76 @@
+<div class="layui-tab layui-tab-brief">
+    <ul class="layui-tab-title site-tab-title">
+        <li class="layui-this i18n-title"></li>
+    </ul>
+    <div class="main-content">
+      <div class="layui-form-item">
+		    <label class="layui-form-label i18n-username"></label>
+		    <div class="layui-input-inline" style="width: 300px;">
+		      <input type="text" name="username" autocomplete="off" class="layui-input">
+		    </div>
+		  </div>
+		  <div class="layui-form-item">
+        <label class="layui-form-label i18n-password"></label>
+        <div class="layui-input-inline" style="width: 300px;">
+          <input type="password" name="password" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label i18n-confirm"></label>
+        <div class="layui-input-inline" style="width: 300px;">
+          <input type="password" name="confirmPassword" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+       <div class="layui-form-item">
+		    <div class="layui-input-block">
+		      <button class="layui-btn submit-btn"></button>
+		      <button class="layui-btn layui-btn-primary back-btn"></button>
+		    </div>
+		  </div>
+    </div>
+</div>
+<script>
+$(".i18n-title").html($.i18n.prop('user.add'));
+$(".i18n-username").html($.i18n.prop('user.username'));
+$(".i18n-password").html($.i18n.prop('user.password'));
+$(".i18n-confirm").html($.i18n.prop('user.confirmPassword'));
+$(".submit-btn").html($.i18n.prop('public.submit'));
+$(".back-btn").html($.i18n.prop('public.back'));
+$("input[name='username']").attr("placeholder", $.i18n.prop('user.username.placeholder'));
+$("input[name='password']").attr("placeholder", $.i18n.prop('user.password.placeholder'));
+$("input[name='confirmPassword']").attr("placeholder", $.i18n.prop('user.confirmPassword.placeholder'));
+
+$(".submit-btn").click(function(){
+    var username = $("input[name='username']").val();
+    var password = $("input[name='password']").val();
+    var confirmPassword = $("input[name='confirmPassword']").val();
+
+    if(username == ""){
+    	layer.alert($.i18n.prop('user.usernameRequired'), {title:"Tips"});
+    	return;
+    }
+    if(password == ""){
+        layer.alert($.i18n.prop('user.passwordRequired'), {title:"Tips"});
+        return;
+    }
+    if(password != confirmPassword){
+        layer.alert($.i18n.prop('user.passwordNotMatch'), {title:"Tips"});
+        return;
+    }
+
+    api_invoke("/user/add", {username: username, password: password}, function(data) {
+        if (data.code == 20000) {
+            layer.alert($.i18n.prop('public.notice.addsuccess'), {title:"Tips"}, function(index){
+                layer.close(index);
+                load_page("html/user/list.html");
+            });
+        } else {
+            layer.alert(data.message, {title:"Tips"});
+        }
+    });
+});
+
+$(".back-btn").click(function(){
+	load_page("html/user/list.html");
+});
+</script>

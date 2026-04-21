@@ -1,0 +1,219 @@
+<div class="layui-tab layui-tab-brief">
+	<ul class="layui-tab-title site-tab-title">
+		<li class="layui-this tab-title"></li>
+	</ul>
+	<div class="search-form">
+		<div class="layui-form-item">
+			<div class="layui-inline">
+				<label class="layui-form-label" style="width: 80px;">日期</label>
+				<div class="layui-input-inline" style="width: 150px;">
+					<select id="logDateSelect" class="layui-input">
+					</select>
+				</div>
+			</div>
+			<div class="layui-inline" id="usernameSearchWrapper" style="display:none;">
+				<label class="layui-form-label" style="width: 80px;">用户名</label>
+				<div class="layui-input-inline" style="width: 140px;">
+					<select id="searchUsername" class="layui-input">
+						<option value="">全部</option>
+					</select>
+				</div>
+			</div>
+			<div class="layui-inline">
+				<label class="layui-form-label" style="width: 80px;">时间范围</label>
+				<div class="layui-input-inline" style="width: 140px;">
+					<input type="text" id="startTime" class="layui-input" placeholder="开始时间">
+				</div>
+				<div class="layui-form-mid">-</div>
+				<div class="layui-input-inline" style="width: 140px;">
+					<input type="text" id="endTime" class="layui-input" placeholder="结束时间">
+				</div>
+			</div>
+			<div class="layui-inline">
+				<button class="layui-btn" id="searchBtn">搜索</button>
+				<button class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+			</div>
+			<div class="layui-inline" id="clearBtnWrapper" style="float: right;">
+				<button class="layui-btn layui-btn-danger" id="clearBtn">清除全部日志</button>
+			</div>
+		</div>
+	</div>
+	<div class="main-content">
+		<table class="layui-table" lay-skin="line">
+			<thead>
+				<tr>
+					<th class="th-time"></th>
+					<th class="th-username"></th>
+					<th class="th-ip"></th>
+					<th class="th-action"></th>
+					<th class="th-details"></th>
+				</tr>
+			</thead>
+			<tbody id="logTableBody">
+			</tbody>
+		</table>
+		<div id="pagination" style="text-align: center; padding: 10px;"></div>
+	</div>
+</div>
+<script>
+    var currentPage = 1;
+    var pageSize = 20;
+    var total = 0;
+    var isAdmin = false;
+
+    layui.use(['laydate', 'layer', 'laypage'], function() {
+        var laydate = layui.laydate;
+        var layer = layui.layer;
+        var laypage = layui.laypage;
+
+        laydate.render({
+            elem: '#startTime',
+            type: 'time',
+            format: 'HH:mm:ss'
+        });
+        laydate.render({
+            elem: '#endTime',
+            type: 'time',
+            format: 'HH:mm:ss'
+        });
+
+        $(".tab-title").html($.i18n.prop('log.management'));
+
+        // 获取当前用户信息
+        api_invoke("/user/list", {}, function(result) {
+            if (result.code == 20000) {
+                isAdmin = result.data.isAdmin;
+                if (isAdmin) {
+                    // 管理员：显示用户名下拉框，加载所有用户
+                    $("#usernameSearchWrapper").show();
+                    $("#clearBtnWrapper").show();
+                    var userList = result.data.data;
+                    var html = '<option value="">全部</option>';
+                    for (var i = 0; i < userList.length; i++) {
+                        html += '<option value="' + userList[i].username + '">' + userList[i].username + '</option>';
+                    }
+                    $("#searchUsername").html(html);
+                } else {
+                    // 非管理员：隐藏用户名搜索和清空按钮
+                    $("#usernameSearchWrapper").hide();
+                    $("#clearBtnWrapper").hide();
+                }
+                loadLogDates();
+            }
+        });
+
+        function loadLogDates() {
+            api_invoke("/log/dates", {}, function(data) {
+                if (data.code == 20000) {
+                    var html = '';
+                    for (var i = 0; i < data.data.length; i++) {
+                        html += '<option value="' + data.data[i] + '">' + data.data[i] + '</option>';
+                    }
+                    $("#logDateSelect").html(html);
+                    if (data.data.length > 0) {
+                        loadLogs();
+                    } else {
+                        $("#logTableBody").html('<tr><td colspan="5" class="no-data">无日志记录</td></tr>');
+                    }
+                }
+            });
+        }
+
+        $("#searchBtn").click(function() {
+            currentPage = 1;
+            loadLogs();
+        });
+
+        $("#resetBtn").click(function() {
+            $("#searchUsername").val('');
+            $("#startTime").val('');
+            $("#endTime").val('');
+            currentPage = 1;
+            loadLogs();
+        });
+
+        $("#clearBtn").click(function() {
+            layer.confirm($.i18n.prop('log.clear.confirm'), {
+                title: $.i18n.prop('public.tips'),
+                btn: [$.i18n.prop('public.ok'), $.i18n.prop('public.cancel')]
+            }, function(index) {
+                layer.close(index);
+                api_invoke("/log/clearAll", {}, function(data) {
+                    if (data.code == 20000) {
+                        layer.alert($.i18n.prop('log.clear.success'), {title: $.i18n.prop('public.tips')}, function(idx) {
+                            layer.close(idx);
+                            loadLogDates();
+                        });
+                    } else {
+                        layer.alert(data.message, {title: $.i18n.prop('public.tips')});
+                    }
+                });
+            });
+        });
+
+        function loadLogs() {
+            var date = $("#logDateSelect").val();
+            var username = isAdmin ? $("#searchUsername").val().trim() : '';
+            var startTime = $("#startTime").val().trim();
+            var endTime = $("#endTime").val().trim();
+
+            var params = {
+                date: date,
+                username: username,
+                startTime: startTime,
+                endTime: endTime,
+                page: currentPage,
+                pageSize: pageSize
+            };
+
+            api_invoke("/log/list", params, function(data) {
+                if (data.code == 20000) {
+                    renderTable(data.data.data);
+                    total = data.data.total;
+                    renderPagination();
+                }
+            });
+        }
+
+        function renderTable(logs) {
+            var html = '';
+            if (logs && logs.length > 0) {
+                for (var i = 0; i < logs.length; i++) {
+                    var log = logs[i];
+                    html += '<tr>';
+                    html += '<td>' + log.time + '</td>';
+                    html += '<td>' + log.username + '</td>';
+                    html += '<td>' + (log.ip || '-') + '</td>';
+                    html += '<td>' + log.action + '</td>';
+                    html += '<td>' + log.details + '</td>';
+                    html += '</tr>';
+                }
+            } else {
+                html = '<tr><td colspan="5" class="no-data">无日志记录</td></tr>';
+            }
+            $("#logTableBody").html(html);
+
+            $(".th-time").html('时间');
+            $(".th-username").html($.i18n.prop('user.username'));
+            $(".th-ip").html('IP地址');
+            $(".th-action").html('操作');
+            $(".th-details").html('详情');
+        }
+
+        function renderPagination() {
+            laypage.render({
+                elem: 'pagination',
+                count: total,
+                limit: pageSize,
+                curr: currentPage,
+                layout: ['count', 'prev', 'page', 'next', 'skip'],
+                jump: function(obj, first) {
+                    if (!first) {
+                        currentPage = obj.curr;
+                        loadLogs();
+                    }
+                }
+            });
+        }
+    });
+</script>

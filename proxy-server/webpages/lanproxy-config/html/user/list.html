@@ -1,0 +1,205 @@
+<div class="layui-tab layui-tab-brief">
+	<ul class="layui-tab-title site-tab-title">
+		<li class="layui-this tab-title"></li>
+	</ul>
+	<div class="main-content"></div>
+    <div class="layui-input-block" style="float: left; margin-left: 15px;">
+        <button class="layui-btn user-add" style="display:none;"></button>
+    </div>
+</div>
+<script id="user-tpl" type="text/html">
+<table class="layui-table" lay-skin="line">
+    <thead>
+        <tr>
+            <th class="th-username"></th>
+            <th class="th-role"></th>
+            <th class="th-create-time"></th>
+            <th class="th-options"></th>
+        </tr>
+    </thead>
+    <tbody>
+    <%for(var i = 0; i < data.length; i++) {%>
+        <tr>
+            <td><%:=data[i].username%></td>
+            <td><%:=data[i].role%></td>
+            <td><%:=formatTime(data[i].createTime)%></td>
+            <td>
+              <a data-username="<%:=data[i].username%>" class="layui-btn layui-btn-mini user-edit"><%:=$.i18n.prop('user.resetPassword')%></a>
+              <a data-username="<%:=data[i].username%>" class="layui-btn layui-btn-danger layui-btn-mini user-delete"><%:=$.i18n.prop('public.delete')%></a>
+            </td>
+        </tr>
+    <%}%>
+    </tbody>
+</table>
+</script>
+<script>
+    function formatTime(timestamp) {
+        if (!timestamp) return '-';
+        var date = new Date(timestamp);
+        return date.toLocaleString();
+    }
+
+    $(".tab-title").html($.i18n.prop('user.management'));
+    $(".user-add").html($.i18n.prop('user.add'));
+
+    loadUsers();
+
+    function loadUsers() {
+        api_invoke("/user/list", {}, function(result) {
+            if (result.code == 20000) {
+                var userList = result.data.data;
+                var isAdmin = result.data.isAdmin;
+                var html = template($("#user-tpl").html(), {
+                    data: userList,
+                    isAdmin: isAdmin
+                });
+                $(".main-content").html(html);
+                bindEvents(isAdmin);
+                // 如果是管理员，显示添加用户按钮
+                if (isAdmin) {
+                    $(".user-add").show();
+                }
+            } else if (result.code == 40300) {
+                $(".main-content").html('<div style="padding:20px;text-align:center;color:#999;">' + $.i18n.prop('user.noPermission') + '</div>');
+            }
+        });
+    }
+
+    function bindEvents(isAdmin) {
+        $(".th-username").html($.i18n.prop('user.username'));
+        $(".th-role").html($.i18n.prop('user.role'));
+        $(".th-create-time").html($.i18n.prop('user.createTime'));
+        $(".th-options").html($.i18n.prop('public.options'));
+
+        // 只有管理员才能看到删除按钮
+        if (!isAdmin) {
+            $(".user-delete").hide();
+        }
+
+        $(".user-edit").click(function() {
+            var username = $(this).attr("data-username");
+            showPasswordDialog(username, false, isAdmin);
+        });
+
+        $(".user-delete").click(function() {
+            var username = $(this).attr("data-username");
+            layer.confirm($.i18n.prop('user.confirm.delete'), {
+                title: $.i18n.prop('public.tips'),
+                btn: [$.i18n.prop('public.ok'), $.i18n.prop('public.cancel')]
+            }, function(i) {
+                layer.close(i);
+                api_invoke("/user/delete", {username: username}, function(data) {
+                    if (data.code == 20000) {
+                        layer.alert($.i18n.prop('public.notice.deletesuccess'), {title: "Tips"}, function(index) {
+                            layer.close(index);
+                            loadUsers();
+                        });
+                    } else {
+                        layer.alert(data.message, {title: "Tips"});
+                    }
+                });
+            });
+        });
+    }
+
+    $(".user-add").click(function() {
+        showAddUserDialog();
+    });
+
+    function showAddUserDialog() {
+        var html = '<div style="padding: 20px;">';
+        html += '<div class="layui-form-item"><label class="layui-form-label">'+$.i18n.prop('user.username')+'</label><div class="layui-input-block"><input type="text" id="newUsername" class="layui-input" placeholder="'+$.i18n.prop('user.username.placeholder')+'"></div></div>';
+        html += '<div class="layui-form-item"><label class="layui-form-label">'+$.i18n.prop('user.password')+'</label><div class="layui-input-block"><input type="password" id="newUserPassword" class="layui-input" placeholder="'+$.i18n.prop('user.password.placeholder')+'"></div></div>';
+        html += '<div class="layui-form-item"><label class="layui-form-label">'+$.i18n.prop('user.confirmPassword')+'</label><div class="layui-input-block"><input type="password" id="newUserConfirmPassword" class="layui-input" placeholder="'+$.i18n.prop('user.confirmPassword.placeholder')+'"></div></div>';
+        html += '</div>';
+
+        layer.open({
+            type: 1,
+            title: $.i18n.prop('user.add'),
+            area: ['420px', '320px'],
+            content: html,
+            btn: [$.i18n.prop('public.submit'), $.i18n.prop('public.cancel')],
+            yes: function(index, layero) {
+                var username = $('#newUsername').val().trim();
+                var password = $('#newUserPassword').val();
+                var confirmPassword = $('#newUserConfirmPassword').val();
+
+                if (username === '') {
+                    layer.msg($.i18n.prop('user.usernameRequired'));
+                    return;
+                }
+                if (password === '') {
+                    layer.msg($.i18n.prop('user.passwordRequired'));
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    layer.msg($.i18n.prop('user.passwordNotMatch'));
+                    return;
+                }
+
+                api_invoke("/user/add", {username: username, password: password}, function(data) {
+                    if (data.code == 20000) {
+                        layer.close(index);
+                        layer.alert($.i18n.prop('public.notice.addsuccess'), {title: $.i18n.prop('public.tips')}, function(i) {
+                            layer.close(i);
+                            loadUsers();
+                        });
+                    } else {
+                        layer.msg(data.message);
+                    }
+                });
+            }
+        });
+    }
+
+    function showPasswordDialog(username, isSelf, isAdmin) {
+        var title = isSelf ? $.i18n.prop('user.changePassword') : $.i18n.prop('user.resetPassword');
+        var html = '<div style="padding: 20px;">';
+        if (isSelf) {
+            html += '<div class="layui-form-item"><label class="layui-form-label">'+$.i18n.prop('user.oldPassword')+'</label><div class="layui-input-block"><input type="password" id="oldPassword" class="layui-input"></div></div>';
+        }
+        html += '<div class="layui-form-item"><label class="layui-form-label">'+$.i18n.prop('user.newPassword')+'</label><div class="layui-input-block"><input type="password" id="newPassword" class="layui-input"></div></div>';
+        html += '<div class="layui-form-item"><label class="layui-form-label">'+$.i18n.prop('user.confirmPassword')+'</label><div class="layui-input-block"><input type="password" id="confirmPassword" class="layui-input"></div></div>';
+        html += '</div>';
+
+        layer.open({
+            type: 1,
+            title: title,
+            area: ['400px', '350px'],
+            content: html,
+            btn: [$.i18n.prop('public.submit'), $.i18n.prop('public.cancel')],
+            yes: function(index, layero) {
+                var oldPassword = isSelf ? $('#oldPassword').val() : '';
+                var newPassword = $('#newPassword').val();
+                var confirmPassword = $('#confirmPassword').val();
+
+                if (newPassword == '') {
+                    layer.msg($.i18n.prop('user.passwordRequired'));
+                    return;
+                }
+                if (newPassword != confirmPassword) {
+                    layer.msg($.i18n.prop('user.passwordNotMatch'));
+                    return;
+                }
+
+                var postData = {
+                    oldPassword: oldPassword,
+                    newPassword: newPassword
+                };
+                // 管理员重置他人密码时传递username
+                if (!isSelf && isAdmin) {
+                    postData.username = username;
+                }
+
+                api_invoke("/user/updatePassword", postData, function(data) {
+                    if (data.code == 20000) {
+                        layer.close(index);
+                        layer.alert($.i18n.prop('public.notice.updatesuccess'), {title: "Tips"});
+                    } else {
+                        layer.msg(data.message);
+                    }
+                });
+            }
+        });
+    }
+</script>

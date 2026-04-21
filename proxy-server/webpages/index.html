@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录</title>
+<style type="text/css">
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	color: #000;
+	background: #fff;
+	font-weight: 300;
+	height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.wrapper {
+	background: #fff;
+	width: 100%;
+	max-width: 360px;
+	padding: 40px;
+	border: 1px solid #ddd;
+}
+
+.container {
+	text-align: center;
+}
+
+.container h1 {
+	font-size: 24px;
+	font-weight: 200;
+	margin-bottom: 30px;
+	color: #000;
+}
+
+.form {
+	padding: 20px 0;
+}
+
+.form input {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	outline: 0;
+	border: 1px solid #ccc;
+	background-color: #fff !important;
+	width: 100%;
+	padding: 12px 15px;
+	margin: 0 auto 15px auto;
+	display: block;
+	text-align: left;
+	font-size: 14px;
+	color: #000;
+	transition: border-color 0.3s;
+	box-sizing: border-box;
+}
+
+.form input:focus {
+	border-color: #000;
+	background-color: #fff !important;
+}
+
+.form input:-webkit-autofill,
+.form input:-webkit-autofill:hover,
+.form input:-webkit-autofill:focus {
+	-webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+	-webkit-text-fill-color: #000 !important;
+}
+
+.form input::placeholder {
+	color: #999;
+}
+
+.captcha-row {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 15px;
+}
+
+.captcha-row input {
+	margin: 0 !important;
+	flex: 1;
+}
+
+.captcha-img {
+	width: 100px;
+	height: 40px;
+	border: 1px solid #ccc;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.captcha-refresh {
+	font-size: 12px;
+	color: #999;
+	text-decoration: underline;
+	cursor: pointer;
+	height: 40px;
+	line-height: 40px;
+	flex-shrink: 0;
+}
+
+.form button {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	outline: 0;
+	background-color: #000;
+	border: 0;
+	padding: 12px 15px;
+	color: #fff;
+	width: 100%;
+	cursor: pointer;
+	font-size: 14px;
+	transition: opacity 0.3s;
+	margin-top: 10px;
+}
+
+.form button:hover {
+	opacity: 0.8;
+}
+
+.form button:active {
+	opacity: 0.6;
+}
+
+.error-msg {
+	color: #d00;
+	font-size: 12px;
+	text-align: left;
+	margin-bottom: 10px;
+	display: none;
+}
+</style>
+</head>
+<body>
+	<div class="wrapper">
+		<div class="container">
+			<h1>qiproxy</h1>
+
+			<div class="form">
+				<div class="error-msg" id="errorMsg"></div>
+				<input type="text" class="username" id="usernameInput" placeholder="用户名" autocomplete="off">
+				<input type="password" class="password" id="passwordInput" placeholder="密码" autocomplete="off">
+				<div class="captcha-row">
+					<input type="text" class="captcha" id="captchaInput" placeholder="验证码" autocomplete="off">
+					<img class="captcha-img" id="captchaImg" src="">
+					<span class="captcha-refresh" id="captchaRefresh">刷新</span>
+				</div>
+				<button type="submit" id="login-button">登录</button>
+			</div>
+		</div>
+	</div>
+
+	<script src="jquery/jquery-3.1.1.min.js" type="text/javascript"></script>
+	<script src="jquery/jquery.i18n.properties.min.js" type="text/javascript"></script>
+	<script>
+		var captchaKey = '';
+		var i18nMessages = {};
+
+		// 初始化国际化
+		var i18nLanguage = "en";
+		var webLanguage = [ 'zh-CN', 'en' ];
+
+		function initWebLanguage() {
+			var navLanguage = navigator.language;
+			if (navLanguage) {
+				var charSize = webLanguage.indexOf(navLanguage);
+				if (charSize > -1) {
+					i18nLanguage = navLanguage;
+				}
+			}
+		}
+
+		initWebLanguage();
+
+		jQuery.i18n.properties({
+			name: 'lang',
+			path: '/i18n/',
+			mode: 'map',
+			language: i18nLanguage,
+			encoding: 'UTF-8',
+			callback: function() {
+				i18nMessages = jQuery.i18n.map || {};
+				updateUI();
+			}
+		});
+
+		function t(key) {
+			return i18nMessages[key] || key;
+		}
+
+		function updateUI() {
+			$("#usernameInput").attr("placeholder", t('username') || '用户名');
+			$("#passwordInput").attr("placeholder", t('password') || '密码');
+			$("#captchaInput").attr("placeholder", t('captcha.placeholder') || '验证码');
+			$("#captchaRefresh").text(t('captcha.refresh') || '刷新');
+			$("#login-button").text(t('login') || '登录');
+		}
+
+		function loadCaptcha() {
+			$.ajax({
+				type: 'POST',
+				url: '/captcha/generate',
+				contentType: 'application/json; charset=utf-8',
+				data: JSON.stringify({}),
+				dataType: 'json',
+				success: function(data) {
+					if (data.code == 20000) {
+						captchaKey = data.data.key;
+						$('#captchaImg').attr('src', data.data.image);
+					}
+				}
+			});
+		}
+
+		function showError(msg) {
+			$('#errorMsg').text(msg);
+			$('#errorMsg').show();
+		}
+
+		function hideError() {
+			$('#errorMsg').hide();
+		}
+
+		$('#captchaImg, #captchaRefresh').click(function() {
+			loadCaptcha();
+		});
+
+		$('#login-button').click(function(event) {
+			hideError();
+
+			var username = $("#usernameInput").val();
+			var password = $("#passwordInput").val();
+			var captcha = $("#captchaInput").val();
+
+			if (username == '') {
+				showError(t('user.usernameRequired') || '请输入用户名');
+				return;
+			}
+			if (password == '') {
+				showError(t('user.passwordRequired') || '请输入密码');
+				return;
+			}
+			if (captcha == '') {
+				showError(t('captcha.required') || '请输入验证码');
+				return;
+			}
+
+			$.ajax({
+				type: 'POST',
+				url: '/login',
+				contentType: 'application/json; charset=utf-8',
+				data: JSON.stringify({
+					username: username,
+					password: password,
+					captchaKey: captchaKey,
+					captchaCode: captcha
+				}),
+				dataType: 'json',
+				success: function(data) {
+					if (data.code == 20000) {
+						setCookie("token", data.data.token);
+						setCookie("username", data.data.username);
+						window.location.href = "/qiproxy-config/";
+					} else {
+						showError(data.message);
+						loadCaptcha();
+					}
+				},
+				error: function(e) {
+					var msg = e.responseJSON.message || (t('login.fail') || '登录失败');
+					if (e.responseJSON.code == 40001) {
+						msg = t('captcha.error') || '验证码错误';
+					} else if (e.responseJSON.code == 40002) {
+						var remaining = e.responseJSON.data && e.responseJSON.data.remaining ? e.responseJSON.data.remaining : 0;
+						msg = t('login.locked').replace('{0}', remaining) || '登录失败次数过多，请' + remaining + '秒后重试';
+					}
+					showError(msg);
+					loadCaptcha();
+				}
+			});
+		});
+
+		function setCookie(name, value) {
+			var Days = 30;
+			var exp = new Date();
+			exp.setTime(exp.getTime() + Days * 24 * 60 * 60 * 1000);
+			document.cookie = name + "=" + escape(value) + ";expires=" + exp.toGMTString();
+		}
+
+		$(document).keyup(function(event) {
+			if (event.keyCode == 13) {
+				$("#login-button").trigger("click");
+			}
+		});
+
+		// 初始加载验证码
+		loadCaptcha();
+	</script>
+</body>
+</html>

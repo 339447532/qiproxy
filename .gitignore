@@ -1,0 +1,40 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+build/
+logs/
+*.log
+
+# Node.js
+node_modules/
+
+# SSL certificates (sensitive)
+ssl/*.pem
+ssl/*.crt
+ssl/*.key
+
+# Distribution
+distribution/
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
+
+# Misc
+*.hprof
+*.iml
