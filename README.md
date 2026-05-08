@@ -20,7 +20,22 @@ qiproxy/
 
 ## 快速开始
 
-### 启动服务端
+### Docker 一键部署（推荐）
+
+```bash
+# 构建镜像
+./deploy.sh build
+
+# 启动服务端
+./deploy.sh start
+
+# 启动客户端（交互模式）
+./deploy.sh client
+```
+
+支持命令：`build`、`start`、`stop`、`restart`、`status`、`logs`、`client`
+
+### 手动启动服务端
 
 ```bash
 cd distribution/proxy-server-0.1
@@ -28,12 +43,58 @@ cd distribution/proxy-server-0.1
 ./bin/startup.bat   # Windows
 ```
 
-### 启动客户端
+### 手动启动客户端
 
 ```bash
 cd proxy-client
 ./start.sh          # Linux/macOS
 start.bat           # Windows
+```
+
+## Docker 部署
+
+项目已提供完整的 Docker 支持，可通过 `docker-compose.yml` 一键编排。
+
+### 端口映射
+
+| 端口 | 用途 |
+|------|------|
+| 4900 | 代理服务端口（客户端连接） |
+| 4993 | SSL 代理端口（加密连接） |
+| 8090 | 管理后台（Web UI） |
+| 5000-5100 | 动态代理端口范围（可在 `docker-compose.yml` 中调整） |
+
+### 目录挂载
+
+| 容器路径 | 宿主机路径 | 说明 |
+|----------|-----------|------|
+| `/app/conf` | `./proxy-server/conf` | 服务端配置和 SSL 证书 |
+| `/app/logs` | `./proxy-server/logs` | 服务端日志 |
+| `/app/conf` | `./proxy-client/conf` | 客户端配置和 SSL 证书 |
+
+### 常用命令
+
+```bash
+# 构建镜像
+./deploy.sh build
+
+# 启动服务端
+./deploy.sh start
+
+# 查看运行状态
+./deploy.sh status
+
+# 查看服务端日志
+./deploy.sh logs
+
+# 启动客户端（交互模式，便于调试）
+./deploy.sh client
+
+# 重启服务
+./deploy.sh restart
+
+# 停止服务
+./deploy.sh stop
 ```
 
 ## 服务架构
@@ -122,6 +183,18 @@ server.port=4900
 - **管理后台**：Layui + jQuery + JSON Editor
 
 ## 构建
+
+### Docker 构建（推荐）
+
+```bash
+# 构建服务端和客户端镜像
+./deploy.sh build
+```
+
+- `proxy-server/Dockerfile`：多阶段构建，基于 `maven:3.9-eclipse-temurin-8` 编译，`eclipse-temurin:8-jre-alpine` 运行
+- `proxy-client/Dockerfile`：基于 `node:20-alpine`
+
+### 手动构建
 
 ```bash
 # 构建服务端

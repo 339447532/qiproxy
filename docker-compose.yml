@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  proxy-server:
+    build:
+      context: .
+      dockerfile: proxy-server/Dockerfile
+    image: qiproxy-server:latest
+    container_name: qiproxy-server
+    restart: unless-stopped
+    ports:
+      - "4900:4900"
+      - "4993:4993"
+      - "8090:8090"
+      # 动态代理端口范围，按需修改
+      - "5000-5100:5000-5100"
+    volumes:
+      # 挂载配置目录（包含 config.properties、server.jks 等）
+      - ./proxy-server/conf:/app/conf
+      # 挂载日志目录
+      - ./proxy-server/logs:/app/logs
+    environment:
+      - JAVA_OPTS=-Djava.awt.headless=true -Djava.net.preferIPv4Stack=true
+    networks:
+      - qiproxy-net
+
+  # 客户端服务（默认不启动，使用 deploy.sh client 启动）
+  proxy-client:
+    profiles:
+      - client
+    build:
+      context: ./proxy-client
+      dockerfile: Dockerfile
+    image: qiproxy-client:latest
+    container_name: qiproxy-client
+    restart: unless-stopped
+    volumes:
+      # 挂载配置目录（包含 config.properties、SSL 证书等）
+      - ./proxy-client/conf:/app/conf
+    depends_on:
+      - proxy-server
+    networks:
+      - qiproxy-net
+
+networks:
+  qiproxy-net:
+    driver: bridge
