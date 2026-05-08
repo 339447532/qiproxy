@@ -10,6 +10,9 @@ qiproxy/
 ├── proxy-protocol/        # 协议模块：消息编解码、心跳检测
 ├── proxy-server/          # Java 服务器端（源码）
 ├── proxy-client/          # Node.js 客户端
+├── android/               # Android 客户端 App（原生 Java）
+│   ├── app/src/main/java/  # 源码：协议、网络、核心、Service、UI
+│   └── app/src/main/res/   # 布局、配置、资源
 ├── distribution/           # 预编译打包目录
 │   └── proxy-server-0.1/
 │       ├── bin/           # 启动脚本
@@ -34,6 +37,63 @@ qiproxy/
 ```
 
 支持命令：`build`、`start`、`stop`、`restart`、`status`、`logs`、`client`
+
+### Android 客户端
+
+#### 功能特性
+
+- 原生 Java 实现，完整复刻 Node.js 客户端功能
+- 自定义二进制协议（长度前缀帧 + 6 种消息类型）
+- SSL/TLS 加密连接（内置 PEM 证书和私钥）
+- 数据通道池化复用（最大 100 个连接）
+- 指数退避断线重连（1s → 2s → 4s ... 封顶 60s）
+- 前台服务保活（`dataSync` 类型 + START_STICKY）
+- HTTP 请求嗅探（实时显示数据通道请求/响应摘要）
+- 侧边栏菜单导航（设置 + GitHub 快捷入口）
+- 实时日志显示（批量刷新 + 200 条上限防内存泄漏）
+
+#### 构建
+
+```bash
+cd android
+
+# Debug 包
+./gradlew assembleDebug
+
+# Release 包（使用生产签名）
+./gradlew assembleRelease
+```
+
+Release APK 输出路径：`android/app/build/outputs/apk/release/app-release.apk`
+
+#### 安装
+
+```bash
+# Debug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+# Release
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+#### 使用
+
+1. 打开 App，侧滑菜单 → **设置**，确认 Server Host、Port、Client Key
+2. 返回主界面，点击 **启动** 启动前台服务
+3. 服务会在通知栏常驻，保持后台连接
+4. 日志区域实时显示连接状态、数据通道请求和响应
+
+#### Android 客户端技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 网络层 | 原生 `java.net.Socket` / `SSLSocket` + 阻塞 I/O |
+| 协议层 | `java.nio.ByteBuffer`（显式 `BIG_ENDIAN`）+ `FrameDecoder` |
+| 线程模型 | 每连接独立线程 + `ScheduledExecutorService`（心跳/idle） |
+| 配置存储 | `EncryptedSharedPreferences`（AndroidX Security） |
+| PEM 解析 | BouncyCastle `bcpkix-jdk15on` |
+| UI | AppCompat + Material Design + RecyclerView |
+| 服务 | `ForegroundService`（`dataSync`）+ `BOOT_COMPLETED` 自启动 |
 
 ### 手动启动服务端
 
@@ -160,6 +220,18 @@ server.host=your-server-ip
 server.port=4900
 ```
 
+### Android 客户端默认配置
+
+| 配置项 | 默认值 |
+|--------|--------|
+| Server Host | `39.108.124.205` |
+| Server Port | `4993` |
+| Client Key | `a513deab23ee47698934f7f8507b1ca5` |
+| SSL Enable | `true` |
+| Log Level | `INFO` |
+
+> 证书、私钥和密钥密码已内置到 APK 中，无需手动配置。
+
 ### 管理后台
 
 访问 `http://server:8090`，使用管理员账号登录后管理客户端和端口映射。
@@ -180,6 +252,7 @@ server.port=4900
 
 - **服务端**：Java 8 + Netty 4.0.36 + SLF4J + Log4j
 - **客户端**：Node.js (>=12.0.0)
+- **Android 客户端**：Java + AndroidX + SSLSocket + BouncyCastle
 - **管理后台**：Layui + jQuery + JSON Editor
 
 ## 构建
@@ -201,6 +274,10 @@ server.port=4900
 cd proxy-server
 mvn clean package
 
+# Android 客户端
+cd android
+./gradlew assembleRelease
+
 # 客户端无需构建，直接运行
 ```
 
@@ -214,4 +291,3 @@ mvn clean package
 | TYPE_DISCONNECT | 0x04 | 断开连接 |
 | P_TYPE_TRANSFER | 0x05 | 数据传输 |
 | C_TYPE_WRITE_CONTROL | 0x06 | 写控制 |
-

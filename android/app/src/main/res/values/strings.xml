@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">QiProxy</string>
+    <string name="action_start">启动</string>
+    <string name="action_stop">停止</string>
+    <string name="status_running">运行中</string>
+    <string name="status_stopped">已停止</string>
+    <string name="status_starting">正在启动...</string>
+    <string name="action_settings">设置</string>
+    <string name="drawer_open">打开菜单</string>
+    <string name="drawer_close">关闭菜单</string>
+</resources>

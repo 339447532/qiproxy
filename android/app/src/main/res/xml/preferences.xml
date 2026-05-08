@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="服务器">
+        <EditTextPreference
+            android:key="server.host"
+            android:title="服务器地址"
+            android:summary="代理服务器 IP 或域名"
+            android:defaultValue="39.108.124.205" />
+
+        <EditTextPreference
+            android:key="server.port"
+            android:title="服务器端口"
+            android:summary="代理服务器端口（默认 4993）"
+            android:inputType="number"
+            android:defaultValue="4993" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="身份认证">
+        <EditTextPreference
+            android:key="client.key"
+            android:title="客户端密钥"
+            android:summary="客户端认证密钥"
+            android:defaultValue="a513deab23ee47698934f7f8507b1ca5" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="SSL 配置">
+        <SwitchPreferenceCompat
+            android:key="ssl.enable"
+            android:title="启用 SSL"
+            android:summary="使用 TLS 加密连接（证书已内置）"
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="高级">
+        <EditTextPreference
+            android:key="log.level"
+            android:title="日志级别"
+            android:summary="DEBUG / INFO / WARN / ERROR"
+            android:defaultValue="INFO" />
+    </PreferenceCategory>
+
+    <Preference
+        android:key="save_config"
+        android:title="保存配置"
+        android:summary="点击保存所有设置" />
+
+</PreferenceScreen>
